@@ -1,0 +1,20 @@
+# Python / PyCharm
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+ENV/
+.idea/
+
+# Next.js / WebStorm
+node_modules/
+.next/
+out/
+build/
+.DS_Store
+
+# Переменные окружения (секреты)
+.env
+.env.local
+.env.production
