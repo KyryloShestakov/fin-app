@@ -9,7 +9,7 @@ from app.api.routes.financial_metrics import router as financial_metrics_router
 from app.api.routes.financials import router as financials_router
 from app.api.routes.documents import router as documents_router
 from app.api.routes.registry import router as registry_router
-
+from app.api.routes.analytics import router as analytics_router
 
 api_router = APIRouter()
 
@@ -22,3 +22,8 @@ api_router.include_router(financial_metrics_router)
 api_router.include_router(financials_router)
 api_router.include_router(documents_router)
 api_router.include_router(registry_router)
+
+api_router.include_router(analytics_router)
+
+
+
