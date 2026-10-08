@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { CompaniesResponse } from "@/types/company";
@@ -43,47 +43,117 @@ export default function CompaniesExplorer({
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const updateParams = useCallback(
-        (updates: Record<string, string | null>) => {
-            const params = new URLSearchParams(
-                searchParams.toString(),
-            );
+    // ---------------------------------------------------------
+    // DRAFT FILTERS
+    // ---------------------------------------------------------
 
-            Object.entries(updates).forEach(([key, value]) => {
-                if (value === null || value === "") {
-                    params.delete(key);
-                } else {
-                    params.set(key, value);
-                }
-            });
+    const [draftSearch, setDraftSearch] = useState(search);
+    const [draftSector, setDraftSector] = useState(sector);
+    const [draftSize, setDraftSize] = useState(size);
+    const [draftLegalForm, setDraftLegalForm] =
+        useState(legalForm);
+    const [draftNace, setDraftNace] = useState(nace);
+    const [draftTurnoverMin, setDraftTurnoverMin] =
+        useState(turnoverMin);
+    const [draftTurnoverMax, setDraftTurnoverMax] =
+        useState(turnoverMax);
 
-            const queryString = params.toString();
+    // ---------------------------------------------------------
+    // SYNC DRAFT WITH URL / SERVER STATE
+    // ---------------------------------------------------------
 
-            router.push(
-                queryString
-                    ? `${pathname}?${queryString}`
-                    : pathname,
-            );
-        },
-        [pathname, router, searchParams],
-    );
+    useEffect(() => {
+        setDraftSearch(search);
+        setDraftSector(sector);
+        setDraftSize(size);
+        setDraftLegalForm(legalForm);
+        setDraftNace(nace);
+        setDraftTurnoverMin(turnoverMin);
+        setDraftTurnoverMax(turnoverMax);
+    }, [
+        search,
+        sector,
+        size,
+        legalForm,
+        nace,
+        turnoverMin,
+        turnoverMax,
+    ]);
 
-    const handleSearchChange = (value: string) => {
+    // ---------------------------------------------------------
+    // URL UPDATE
+    // ---------------------------------------------------------
+
+    const updateParams = (
+        updates: Record<string, string | null>,
+    ) => {
+        const params = new URLSearchParams(
+            searchParams.toString(),
+        );
+
+        Object.entries(updates).forEach(([key, value]) => {
+            if (value === null || value === "") {
+                params.delete(key);
+            } else {
+                params.set(key, value);
+            }
+        });
+
+        const queryString = params.toString();
+
+        router.push(
+            queryString
+                ? `${pathname}?${queryString}`
+                : pathname,
+        );
+    };
+
+    // ---------------------------------------------------------
+    // APPLY FILTERS
+    // ---------------------------------------------------------
+
+    const handleApplyFilters = () => {
         updateParams({
-            search: value || null,
+            search: draftSearch || null,
+            sector: draftSector || null,
+            size: draftSize || null,
+            legal_form: draftLegalForm || null,
+            nace: draftNace || null,
+            turnover_min: draftTurnoverMin || null,
+            turnover_max: draftTurnoverMax || null,
             page: "1",
         });
     };
 
+    // ---------------------------------------------------------
+    // RESET
+    // ---------------------------------------------------------
+
     const handleReset = () => {
+        setDraftSearch("");
+        setDraftSector("");
+        setDraftSize("");
+        setDraftLegalForm("");
+        setDraftNace("");
+        setDraftTurnoverMin("");
+        setDraftTurnoverMax("");
+
         router.push(pathname);
     };
+
+    // ---------------------------------------------------------
+    // PAGINATION
+    // ---------------------------------------------------------
 
     const handlePageChange = (nextPage: number) => {
         updateParams({
             page: String(nextPage),
         });
     };
+
+    // ---------------------------------------------------------
+    // SORT
+    // ---------------------------------------------------------
 
     const handleSort = (field: SortField) => {
         const nextOrder =
@@ -114,50 +184,21 @@ export default function CompaniesExplorer({
             </div>
 
             <CompaniesFilters
-                search={search}
-                sector={sector}
-                size={size}
-                legalForm={legalForm}
-                nace={nace}
-                turnoverMin={turnoverMin}
-                turnoverMax={turnoverMax}
-                onSearchChange={handleSearchChange}
-                onSectorChange={(value) =>
-                    updateParams({
-                        sector: value || null,
-                        page: "1",
-                    })
-                }
-                onSizeChange={(value) =>
-                    updateParams({
-                        size: value || null,
-                        page: "1",
-                    })
-                }
-                onLegalFormChange={(value) =>
-                    updateParams({
-                        legal_form: value || null,
-                        page: "1",
-                    })
-                }
-                onNaceChange={(value) =>
-                    updateParams({
-                        nace: value || null,
-                        page: "1",
-                    })
-                }
-                onTurnoverMinChange={(value) =>
-                    updateParams({
-                        turnover_min: value || null,
-                        page: "1",
-                    })
-                }
-                onTurnoverMaxChange={(value) =>
-                    updateParams({
-                        turnover_max: value || null,
-                        page: "1",
-                    })
-                }
+                search={draftSearch}
+                sector={draftSector}
+                size={draftSize}
+                legalForm={draftLegalForm}
+                nace={draftNace}
+                turnoverMin={draftTurnoverMin}
+                turnoverMax={draftTurnoverMax}
+                onSearchChange={setDraftSearch}
+                onSectorChange={setDraftSector}
+                onSizeChange={setDraftSize}
+                onLegalFormChange={setDraftLegalForm}
+                onNaceChange={setDraftNace}
+                onTurnoverMinChange={setDraftTurnoverMin}
+                onTurnoverMaxChange={setDraftTurnoverMax}
+                onApply={handleApplyFilters}
                 onReset={handleReset}
             />
 
@@ -178,21 +219,29 @@ export default function CompaniesExplorer({
                         <button
                             type="button"
                             className="sort-button"
-                            onClick={() => handleSort("name")}
+                            onClick={() =>
+                                handleSort("name")
+                            }
                         >
                             Name{" "}
                             {sort === "name" &&
-                                (order === "asc" ? "↑" : "↓")}
+                                (order === "asc"
+                                    ? "↑"
+                                    : "↓")}
                         </button>
 
                         <button
                             type="button"
                             className="sort-button"
-                            onClick={() => handleSort("ico")}
+                            onClick={() =>
+                                handleSort("ico")
+                            }
                         >
                             IČO{" "}
                             {sort === "ico" &&
-                                (order === "asc" ? "↑" : "↓")}
+                                (order === "asc"
+                                    ? "↑"
+                                    : "↓")}
                         </button>
                     </div>
                 </div>

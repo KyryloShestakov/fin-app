@@ -8,7 +8,16 @@ from app.db.models.company import (
     CompanyNace,
     CompanySizeClassification,
 )
-from app.db.models.reference import LegalForm, NaceCode
+from app.db.models.financial import (
+    FinancialMetric,
+    FinancialStatement,
+    FinancialValue,
+)
+from app.db.models.reference import (
+    CompanySize,
+    LegalForm,
+    NaceCode,
+)
 from app.schemas.company import (
     CompanyDetailResponse,
     CompanyListResponse,
@@ -63,7 +72,19 @@ def get_companies(
 
     year: int | None = Query(
         default=None,
-        description="Fiscal year for company size classification",
+        description="Fiscal year for company size and financial data",
+    ),
+
+    turnover_min: float | None = Query(
+        default=None,
+        ge=0,
+        description="Minimum turnover",
+    ),
+
+    turnover_max: float | None = Query(
+        default=None,
+        ge=0,
+        description="Maximum turnover",
     ),
 
     sort: str = Query(
@@ -122,17 +143,18 @@ def get_companies(
 
     if size:
         size_subquery = (
-            select(CompanySizeClassification.id)
+            select(
+                CompanySizeClassification.id
+            )
             .join(
-                CompanySizeClassification.size
+                CompanySize,
+                CompanySize.id
+                == CompanySizeClassification.size_id,
             )
             .where(
                 CompanySizeClassification.company_id
                 == Company.id,
-
-                CompanySizeClassification.size.has(
-                    code=size
-                ),
+                CompanySize.code == size,
             )
         )
 
@@ -152,13 +174,14 @@ def get_companies(
 
     if nace:
         nace_subquery = (
-            select(CompanyNace.id)
+            select(
+                CompanyNace.id
+            )
             .join(
                 CompanyNace.nace
             )
             .where(
                 CompanyNace.company_id == Company.id,
-
                 NaceCode.code == nace,
             )
         )
@@ -166,6 +189,55 @@ def get_companies(
         query = query.where(
             nace_subquery.exists()
         )
+
+    # ---------------------------------------------------------
+    # TURNOVER
+    # ---------------------------------------------------------
+
+    if turnover_min is not None or turnover_max is not None:
+        financial_year = year or 2024
+
+        turnover_subquery = (
+            select(
+                func.coalesce(
+                    func.sum(FinancialValue.value),
+                    0,
+                )
+            )
+            .join(
+                FinancialStatement,
+                FinancialValue.statement_id
+                == FinancialStatement.id,
+            )
+            .join(
+                FinancialMetric,
+                FinancialValue.metric_id
+                == FinancialMetric.id,
+            )
+            .where(
+                FinancialStatement.company_id == Company.id,
+                FinancialStatement.fiscal_year
+                == financial_year,
+                FinancialMetric.code.in_(
+                    [
+                        "revenue_products_services",
+                        "revenue_goods",
+                    ]
+                ),
+                FinancialValue.value.is_not(None),
+            )
+            .scalar_subquery()
+        )
+
+        if turnover_min is not None:
+            query = query.where(
+                turnover_subquery >= turnover_min
+            )
+
+        if turnover_max is not None:
+            query = query.where(
+                turnover_subquery <= turnover_max
+            )
 
     # ---------------------------------------------------------
     # COUNT
@@ -249,6 +321,8 @@ def get_companies(
             "legal_form": legal_form,
             "nace": nace,
             "year": year,
+            "turnover_min": turnover_min,
+            "turnover_max": turnover_max,
             "sort": sort,
             "order": order,
         },

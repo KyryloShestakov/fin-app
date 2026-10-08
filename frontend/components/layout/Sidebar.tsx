@@ -1,4 +1,9 @@
+
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 import Tabs from "@/components/layout/tabs";
 
 const navigation = [
@@ -9,11 +14,24 @@ const navigation = [
 
 const dataNavigation = [
     { label: "Registry", href: "/companies" },
-    { label: "Financials", href: "/companies" },
+    { label: "Financials", href: "/financials" },
     { label: "Documents", href: "/companies" },
 ];
 
 export default function Sidebar() {
+    const pathname = usePathname();
+
+    const isActive = (href: string) => {
+        if (href === "/") {
+            return pathname === "/";
+        }
+
+        return (
+            pathname === href ||
+            pathname.startsWith(`${href}/`)
+        );
+    };
+
     return (
         <aside className="sidebar">
             <div className="sidebar-logo">
@@ -21,7 +39,10 @@ export default function Sidebar() {
                     <div className="logo-mark">F</div>
 
                     <div>
-                        <div className="logo-title">FinScope</div>
+                        <div className="logo-title">
+                            FinScope
+                        </div>
+
                         <div className="logo-subtitle">
                             Company Intelligence
                         </div>
@@ -32,25 +53,47 @@ export default function Sidebar() {
             </div>
 
             <nav className="sidebar-nav">
-                <div className="nav-section-title">Workspace</div>
+                <div className="nav-section-title">
+                    Workspace
+                </div>
 
                 {navigation.map((item) => (
                     <Link
                         key={item.label}
                         href={item.href}
-                        className="nav-item"
+                        className={`nav-item ${
+                            isActive(item.href)
+                                ? "active"
+                                : ""
+                        }`}
+                        aria-current={
+                            isActive(item.href)
+                                ? "page"
+                                : undefined
+                        }
                     >
                         <span>{item.label}</span>
                     </Link>
                 ))}
 
-                <div className="nav-section-title">Data</div>
+                <div className="nav-section-title">
+                    Data
+                </div>
 
                 {dataNavigation.map((item) => (
                     <Link
                         key={item.label}
                         href={item.href}
-                        className="nav-item"
+                        className={`nav-item ${
+                            isActive(item.href)
+                                ? "active"
+                                : ""
+                        }`}
+                        aria-current={
+                            isActive(item.href)
+                                ? "page"
+                                : undefined
+                        }
                     >
                         <span>{item.label}</span>
                     </Link>
@@ -62,7 +105,9 @@ export default function Sidebar() {
                     <div className="status-dot" />
 
                     <div>
-                        <div className="status-title">Data connected</div>
+                        <div className="status-title">
+                            Data connected
+                        </div>
 
                         <div className="status-text">
                             Supabase PostgreSQL

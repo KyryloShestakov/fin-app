@@ -17,6 +17,7 @@ type CompaniesFiltersProps = {
     onTurnoverMinChange: (value: string) => void;
     onTurnoverMaxChange: (value: string) => void;
 
+    onApply: () => void;
     onReset: () => void;
 };
 
@@ -35,6 +36,7 @@ export default function CompaniesFilters({
                                              onNaceChange,
                                              onTurnoverMinChange,
                                              onTurnoverMaxChange,
+                                             onApply,
                                              onReset,
                                          }: CompaniesFiltersProps) {
     const hasFilters =
@@ -71,14 +73,14 @@ export default function CompaniesFilters({
                     }
                 >
                     <option value="">All sectors</option>
-                    <option value="A">A — Agriculture</option>
-                    <option value="C">C — Manufacturing</option>
-                    <option value="F">F — Construction</option>
-                    <option value="G">G — Trade</option>
-                    <option value="I">I — Accommodation</option>
-                    <option value="J">J — Information</option>
-                    <option value="L">L — Real estate</option>
-                    <option value="M">M — Professional activities</option>
+                    <option value="A">Agriculture</option>
+                    <option value="C">Manufacturing</option>
+                    <option value="F">Construction</option>
+                    <option value="G">Trade</option>
+                    <option value="I">Accommodation</option>
+                    <option value="J">Information</option>
+                    <option value="L">Real estate</option>
+                    <option value="M">Professional activities</option>
                 </select>
 
                 <select
@@ -88,9 +90,9 @@ export default function CompaniesFilters({
                     }
                 >
                     <option value="">All sizes</option>
-                    <option value="micro">Micro</option>
-                    <option value="small">Small</option>
-                    <option value="big">Big</option>
+                    <option value="MICRO">Micro</option>
+                    <option value="SMALL">Small</option>
+                    <option value="BIG">Big</option>
                 </select>
 
                 <input
@@ -132,13 +134,23 @@ export default function CompaniesFilters({
                 />
 
                 {hasFilters && (
-                    <button
-                        type="button"
-                        className="filter-reset"
-                        onClick={onReset}
-                    >
-                        Clear filters
-                    </button>
+                    <>
+                        <button
+                            type="button"
+                            className="filter-apply"
+                            onClick={onApply}
+                        >
+                            Apply filters
+                        </button>
+
+                        <button
+                            type="button"
+                            className="filter-reset"
+                            onClick={onReset}
+                        >
+                            Clear filters
+                        </button>
+                    </>
                 )}
             </div>
         </section>

@@ -1,6 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const navigation = [
@@ -9,8 +11,26 @@ const navigation = [
     { label: "Analytics", href: "/analytics" },
 ];
 
+const dataNavigation = [
+    { label: "Registry", href: "/companies" },
+    { label: "Financials", href: "/financials" },
+    { label: "Documents", href: "/companies" },
+];
+
 export default function Tabs() {
     const [open, setOpen] = useState(false);
+    const pathname = usePathname();
+
+    const isActive = (href: string) => {
+        if (href === "/") {
+            return pathname === "/";
+        }
+
+        return (
+            pathname === href ||
+            pathname.startsWith(`${href}/`)
+        );
+    };
 
     return (
         <>
@@ -33,11 +53,15 @@ export default function Tabs() {
                 >
                     <aside
                         className="mobile-menu"
-                        onClick={(event) => event.stopPropagation()}
+                        onClick={(event) =>
+                            event.stopPropagation()
+                        }
                     >
                         <div className="mobile-menu-header">
                             <div className="mobile-menu-brand">
-                                <div className="logo-mark">F</div>
+                                <div className="logo-mark">
+                                    F
+                                </div>
 
                                 <div>
                                     <div className="logo-title">
@@ -69,7 +93,40 @@ export default function Tabs() {
                                 <Link
                                     key={item.label}
                                     href={item.href}
-                                    className="mobile-nav-item"
+                                    className={`mobile-nav-item ${
+                                        isActive(item.href)
+                                            ? "active"
+                                            : ""
+                                    }`}
+                                    aria-current={
+                                        isActive(item.href)
+                                            ? "page"
+                                            : undefined
+                                    }
+                                    onClick={() => setOpen(false)}
+                                >
+                                    {item.label}
+                                </Link>
+                            ))}
+
+                            <div className="nav-section-title">
+                                Data
+                            </div>
+
+                            {dataNavigation.map((item) => (
+                                <Link
+                                    key={item.label}
+                                    href={item.href}
+                                    className={`mobile-nav-item ${
+                                        isActive(item.href)
+                                            ? "active"
+                                            : ""
+                                    }`}
+                                    aria-current={
+                                        isActive(item.href)
+                                            ? "page"
+                                            : undefined
+                                    }
                                     onClick={() => setOpen(false)}
                                 >
                                     {item.label}
