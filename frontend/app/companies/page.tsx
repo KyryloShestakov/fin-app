@@ -12,6 +12,7 @@ type SearchParams = {
     size?: string;
     legal_form?: string;
     nace?: string;
+    municipality?: string;
     turnover_min?: string;
     turnover_max?: string;
     sort?: "id" | "name" | "ico";
@@ -33,6 +34,7 @@ export default async function CompaniesPage({
     const size = params.size ?? "";
     const legalForm = params.legal_form ?? "";
     const nace = params.nace ?? "";
+    const municipality = params.municipality ?? "";
     const turnoverMin = params.turnover_min ?? "";
     const turnoverMax = params.turnover_max ?? "";
 
@@ -52,6 +54,7 @@ export default async function CompaniesPage({
             ? Number(legalForm)
             : undefined,
         nace: nace || undefined,
+        municipality: municipality || undefined,
         turnover_min: turnoverMin
             ? Number(turnoverMin)
             : undefined,
@@ -79,6 +82,7 @@ export default async function CompaniesPage({
                         size={size}
                         legalForm={legalForm}
                         nace={nace}
+                        municipality={municipality}
                         turnoverMin={turnoverMin}
                         turnoverMax={turnoverMax}
                         sort={sort}

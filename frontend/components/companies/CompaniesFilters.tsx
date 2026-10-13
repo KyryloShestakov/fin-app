@@ -1,19 +1,24 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 type CompaniesFiltersProps = {
     search: string;
     sector: string;
     size: string;
     legalForm: string;
     nace: string;
+    municipality: string;
     turnoverMin: string;
     turnoverMax: string;
 
     onSearchChange: (value: string) => void;
+    onSuggestionSelect: (value: string) => void;
     onSectorChange: (value: string) => void;
     onSizeChange: (value: string) => void;
     onLegalFormChange: (value: string) => void;
     onNaceChange: (value: string) => void;
+    onMunicipalityChange: (value: string) => void;
     onTurnoverMinChange: (value: string) => void;
     onTurnoverMaxChange: (value: string) => void;
 
@@ -27,18 +32,34 @@ export default function CompaniesFilters({
                                              size,
                                              legalForm,
                                              nace,
+                                             municipality,
                                              turnoverMin,
                                              turnoverMax,
                                              onSearchChange,
+                                             onSuggestionSelect,
                                              onSectorChange,
                                              onSizeChange,
                                              onLegalFormChange,
                                              onNaceChange,
+                                             onMunicipalityChange,
                                              onTurnoverMinChange,
                                              onTurnoverMaxChange,
                                              onApply,
                                              onReset,
                                          }: CompaniesFiltersProps) {
+    const [suggestions, setSuggestions] = useState<{ ico: string; name: string; municipality: string | null }[]>([]);
+
+    useEffect(() => {
+        const term = search.trim();
+        if (term.length < 2) { queueMicrotask(() => setSuggestions([])); return; }
+        const timer = window.setTimeout(() => {
+            fetch(`/api/company-suggestions?q=${encodeURIComponent(term)}`)
+                .then(response => response.ok ? response.json() : [])
+                .then(setSuggestions)
+                .catch(() => setSuggestions([]));
+        }, 180);
+        return () => window.clearTimeout(timer);
+    }, [search]);
     const hasFilters =
         search ||
         sector ||
@@ -61,6 +82,16 @@ export default function CompaniesFilters({
                         onSearchChange(event.target.value)
                     }
                 />
+
+                {suggestions.length > 0 && (
+                    <div className="company-search-suggestions">
+                        {suggestions.map((company) => (
+                            <button key={company.ico} type="button" onClick={() => { setSuggestions([]); onSuggestionSelect(company.ico); }}>
+                                <strong>{company.name}</strong><span>IČO {company.ico}{company.municipality ? ` · ${company.municipality}` : ""}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 <span className="search-shortcut">⌘ K</span>
             </div>
@@ -102,6 +133,13 @@ export default function CompaniesFilters({
                     onChange={(event) =>
                         onNaceChange(event.target.value)
                     }
+                />
+
+                <input
+                    type="text"
+                    placeholder="Registered city"
+                    value={municipality}
+                    onChange={(event) => onMunicipalityChange(event.target.value)}
                 />
 
                 <input

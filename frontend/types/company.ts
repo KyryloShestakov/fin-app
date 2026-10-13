@@ -34,6 +34,7 @@ export type CompanyFilters = {
     size?: string;
     legal_form?: number;
     nace?: string;
+    municipality?: string;
     turnover_min?: number;
     turnover_max?: number;
     sort?: "id" | "name" | "ico";

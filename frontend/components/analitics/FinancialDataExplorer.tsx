@@ -22,6 +22,7 @@ export default function FinancialDataExplorer() {
     const [value, setValue] = useState('');
     const [valueTo, setValueTo] = useState('');
     const [searchDraft, setSearchDraft] = useState('');
+    const [searchSuggestions, setSearchSuggestions] = useState<{ ico: string; name: string; municipality: string | null }[]>([]);
     const [watchlists, setWatchlists] = useState<Watchlists>({ Watchlist: [] });
     const [activeList, setActiveList] = useState('Watchlist');
     const [newList, setNewList] = useState('');
@@ -49,6 +50,17 @@ export default function FinancialDataExplorer() {
         return () => controller.abort();
     }, [query]);
     useEffect(() => {
+        const term = searchDraft.trim();
+        if (term.length < 2) { queueMicrotask(() => setSearchSuggestions([])); return; }
+        const timer = window.setTimeout(() => {
+            fetch(`/api/company-suggestions?q=${encodeURIComponent(term)}`)
+                .then(response => response.ok ? response.json() : [])
+                .then(setSearchSuggestions)
+                .catch(() => setSearchSuggestions([]));
+        }, 180);
+        return () => window.clearTimeout(timer);
+    }, [searchDraft]);
+    useEffect(() => {
         if (!comparison.length) return;
         fetch('/api/financial-explorer/insights', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ company_ids: comparison.map(company => company.company_id), year: result?.year ?? null }) })
             .then(response => response.ok ? response.json() : Promise.reject(new Error('Unable to load comparison insights')))
@@ -67,12 +79,21 @@ export default function FinancialDataExplorer() {
     const toggleSaved = (company: FinancialTableRow) => setWatchlists(current => { const list = current[activeList] ?? []; return { ...current, [activeList]: list.some(item => item.company_id === company.company_id) ? list.filter(item => item.company_id !== company.company_id) : [...list, company] }; });
     const toggleCompare = (company: FinancialTableRow) => setComparison(current => current.some(item => item.company_id === company.company_id) ? current.filter(item => item.company_id !== company.company_id) : current.length < 4 ? [...current, company] : current);
     const createList = () => { const name = newList.trim(); if (name && !watchlists[name]) { setWatchlists(current => ({ ...current, [name]: [] })); setActiveList(name); } setNewList(''); };
+    const exportCurrentPage = () => {
+        if (!result?.rows.length) return;
+        const escape = (item: string | null | undefined) => `"${(item ?? '').replaceAll('"', '""')}"`;
+        const headers = ['IČO', 'Company', 'Sector', 'City', ...metadata.metrics.map(metric => metric.name)];
+        const rows = result.rows.map(row => [row.ico, row.name, row.sector?.name ?? '', row.municipality ?? '', ...metadata.metrics.map(metric => row.values[metric.code] ?? '')]);
+        const csv = [headers, ...rows].map(row => row.map(escape).join(',')).join('\n');
+        const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }));
+        const link = document.createElement('a'); link.href = url; link.download = `financials-${result.year ?? 'latest'}-page-${result.page}.csv`; link.click(); URL.revokeObjectURL(url);
+    };
     const isSaved = (company: FinancialTableRow) => activeCompanies.some(item => item.company_id === company.company_id);
     const isCompared = (company: FinancialTableRow) => comparison.some(item => item.company_id === company.company_id);
 
     return <section className="financial-explorer">
-        <div className="fe-heading"><div><div className="panel-eyebrow">FINANCIAL DATA</div><h3>Financial Data Explorer</h3><p>Explore, save and compare company financial indicators.</p></div><span>{result?.total.toLocaleString('cs-CZ') ?? '—'} companies</span></div>
-        <div className="fe-toolbar"><form onSubmit={event => { event.preventDefault(); setQuery(current => ({ ...current, page: 1, search: searchDraft })); }}><input value={searchDraft} onChange={event => setSearchDraft(event.target.value)} placeholder="Search company or IČO"/><button type="submit">Search</button></form><label>Year <select value={query.year ?? ''} onChange={event => setQuery(current => ({ ...current, page: 1, year: event.target.value ? Number(event.target.value) : null }))}><option value="">Latest</option>{metadata.years.map(year => <option key={year} value={year}>{year}</option>)}</select></label><button onClick={() => { setQuery({ page: 1, page_size: 50, year: null, search: '', sort_by: 'name', sort_dir: 'asc', filters: [] }); setSearchDraft(''); }}>Reset</button></div>
+        <div className="fe-heading"><div><div className="panel-eyebrow">FINANCIAL DATA</div><h3>Financial Data Explorer</h3><p>Explore, save and compare company financial indicators.</p></div><div className="fe-heading-actions"><button type="button" onClick={exportCurrentPage} disabled={!result?.rows.length}>Export CSV</button><span>{result?.total.toLocaleString('cs-CZ') ?? '—'} companies</span></div></div>
+        <div className="fe-toolbar"><form onSubmit={event => { event.preventDefault(); setSearchSuggestions([]); setQuery(current => ({ ...current, page: 1, search: searchDraft })); }}><input value={searchDraft} onChange={event => setSearchDraft(event.target.value)} placeholder="Search company or IČO"/><button type="submit">Search</button>{searchSuggestions.length > 0 && <div className="fe-search-suggestions">{searchSuggestions.map(company => <button key={company.ico} type="button" onClick={() => { setSearchDraft(company.ico); setSearchSuggestions([]); setQuery(current => ({ ...current, page: 1, search: company.ico })); }}><strong>{company.name}</strong><span>IČO {company.ico}{company.municipality ? ` · ${company.municipality}` : ''}</span></button>)}</div>}</form><label>Year <select value={query.year ?? ''} onChange={event => setQuery(current => ({ ...current, page: 1, year: event.target.value ? Number(event.target.value) : null }))}><option value="">Latest</option>{metadata.years.map(year => <option key={year} value={year}>{year}</option>)}</select></label><button onClick={() => { setQuery({ page: 1, page_size: 50, year: null, search: '', sort_by: 'name', sort_dir: 'asc', filters: [] }); setSearchDraft(''); }}>Reset</button></div>
         <div className="fe-filter"><select aria-label="Financial metric" value={metricCode} onChange={event => setMetricCode(event.target.value)}>{metadata.metrics.map(metric => <option key={metric.code} value={metric.code}>{metric.name} ({metric.code})</option>)}</select><select aria-label="Operator" value={operator} onChange={event => setOperator(event.target.value as MetricFilter['operator'])}>{OPERATORS.map(item => <option key={item} value={item}>{LABELS[item]}</option>)}</select>{!['is_null', 'is_not_null'].includes(operator) && <input type="number" step="any" placeholder="Value" value={value} onChange={event => setValue(event.target.value)}/>} {operator === 'between' && <input type="number" step="any" placeholder="To" value={valueTo} onChange={event => setValueTo(event.target.value)}/>}<button onClick={addFilter}>+ Add filter</button></div>
         {query.filters.length > 0 && <div className="fe-chips">{query.filters.map((filter, index) => <button key={`${filter.code}-${index}`} onClick={() => setQuery(current => ({ ...current, page: 1, filters: current.filters.filter((_, itemIndex) => itemIndex !== index) }))}>{metricMap.get(filter.code)?.name ?? filter.code} {LABELS[filter.operator]} {filter.value ?? ''}{filter.operator === 'between' ? ` – ${filter.value_to}` : ''} ×</button>)}</div>}
         {error && <p className="fe-error" role="alert">{error}</p>}

@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.db.database import get_db
 from app.db.models.company import (
     Company,
+    CompanyAddress,
     CompanyNace,
     CompanySizeClassification,
 )
@@ -68,6 +69,11 @@ def get_companies(
     nace: str | None = Query(
         default=None,
         description="NACE code",
+    ),
+
+    municipality: str | None = Query(
+        default=None,
+        description="Registered-office municipality",
     ),
 
     year: int | None = Query(
@@ -188,6 +194,16 @@ def get_companies(
 
         query = query.where(
             nace_subquery.exists()
+        )
+
+    if municipality:
+        query = query.where(
+            Company.addresses.any(
+                and_(
+                    CompanyAddress.address_type == "registered",
+                    CompanyAddress.municipality.ilike(f"%{municipality.strip()}%"),
+                )
+            )
         )
 
     # ---------------------------------------------------------
@@ -320,6 +336,7 @@ def get_companies(
             "size": size,
             "legal_form": legal_form,
             "nace": nace,
+            "municipality": municipality,
             "year": year,
             "turnover_min": turnover_min,
             "turnover_max": turnover_max,
@@ -327,6 +344,35 @@ def get_companies(
             "order": order,
         },
     }
+
+
+@router.get("/suggestions")
+def company_suggestions(
+    q: str = Query(min_length=2, max_length=100),
+    db: Session = Depends(get_db),
+):
+    """Small, fast autocomplete payload for the company explorer."""
+    term = q.strip()
+    if len(term) < 2:
+        return []
+    pattern = f"%{term}%"
+    rows = db.execute(
+        select(Company.ico, Company.name, CompanyAddress.municipality)
+        .outerjoin(
+            CompanyAddress,
+            and_(
+                CompanyAddress.company_id == Company.id,
+                CompanyAddress.address_type == "registered",
+            ),
+        )
+        .where(or_(Company.name.ilike(pattern), Company.ico.ilike(pattern)))
+        .order_by(Company.name.asc())
+        .limit(8)
+    ).all()
+    return [
+        {"ico": row.ico, "name": row.name, "municipality": row.municipality}
+        for row in rows
+    ]
 
 
 @router.get(

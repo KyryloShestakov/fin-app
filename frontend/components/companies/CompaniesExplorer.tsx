@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { CompaniesResponse } from "@/types/company";
@@ -11,6 +11,8 @@ import Pagination from "./Pagination";
 
 type SortField = "id" | "name" | "ico";
 type SortOrder = "asc" | "desc";
+type SavedView = { name: string; query: string };
+const SAVED_VIEWS_KEY = "finscope-company-views";
 
 type CompaniesExplorerProps = {
     data: CompaniesResponse;
@@ -19,6 +21,7 @@ type CompaniesExplorerProps = {
     size: string;
     legalForm: string;
     nace: string;
+    municipality: string;
     turnoverMin: string;
     turnoverMax: string;
     sort: SortField;
@@ -33,11 +36,11 @@ export default function CompaniesExplorer({
                                               size,
                                               legalForm,
                                               nace,
+                                              municipality,
                                               turnoverMin,
                                               turnoverMax,
                                               sort,
                                               order,
-                                              page,
                                           }: CompaniesExplorerProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -53,21 +56,27 @@ export default function CompaniesExplorer({
     const [draftLegalForm, setDraftLegalForm] =
         useState(legalForm);
     const [draftNace, setDraftNace] = useState(nace);
+    const [draftMunicipality, setDraftMunicipality] = useState(municipality);
     const [draftTurnoverMin, setDraftTurnoverMin] =
         useState(turnoverMin);
     const [draftTurnoverMax, setDraftTurnoverMax] =
         useState(turnoverMax);
+    const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+    const [viewName, setViewName] = useState("");
+    const savedViewsReady = useRef(false);
 
     // ---------------------------------------------------------
     // SYNC DRAFT WITH URL / SERVER STATE
     // ---------------------------------------------------------
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDraftSearch(search);
         setDraftSector(sector);
         setDraftSize(size);
         setDraftLegalForm(legalForm);
         setDraftNace(nace);
+        setDraftMunicipality(municipality);
         setDraftTurnoverMin(turnoverMin);
         setDraftTurnoverMax(turnoverMax);
     }, [
@@ -76,9 +85,21 @@ export default function CompaniesExplorer({
         size,
         legalForm,
         nace,
+        municipality,
         turnoverMin,
         turnoverMax,
     ]);
+
+    useEffect(() => {
+        try {
+            const stored = JSON.parse(localStorage.getItem(SAVED_VIEWS_KEY) ?? "[]") as SavedView[];
+            Promise.resolve(stored).then((views) => { savedViewsReady.current = true; setSavedViews(views); });
+        } catch { savedViewsReady.current = true; }
+    }, []);
+
+    useEffect(() => {
+        if (savedViewsReady.current) localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(savedViews));
+    }, [savedViews]);
 
     // ---------------------------------------------------------
     // URL UPDATE
@@ -119,10 +140,41 @@ export default function CompaniesExplorer({
             size: draftSize || null,
             legal_form: draftLegalForm || null,
             nace: draftNace || null,
+            municipality: draftMunicipality || null,
             turnover_min: draftTurnoverMin || null,
             turnover_max: draftTurnoverMax || null,
             page: "1",
         });
+    };
+
+    const handleSuggestionSelect = (value: string) => {
+        setDraftSearch(value);
+        updateParams({
+            search: value,
+            sector: draftSector || null,
+            size: draftSize || null,
+            legal_form: draftLegalForm || null,
+            nace: draftNace || null,
+            municipality: draftMunicipality || null,
+            turnover_min: draftTurnoverMin || null,
+            turnover_max: draftTurnoverMax || null,
+            page: "1",
+        });
+    };
+
+    const exportVisibleRows = () => {
+        const escape = (value: string) => `"${value.replaceAll('"', '""')}"`;
+        const rows = data.items.map(company => [company.ico, company.name, company.sector?.code ?? "", company.sector?.name ?? "", company.legal_form?.short_name ?? company.legal_form?.name ?? ""]);
+        const csv = [["IČO", "Company", "Sector code", "Sector", "Legal form"], ...rows].map(row => row.map(escape).join(",")).join("\n");
+        const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
+        const link = document.createElement("a"); link.href = url; link.download = "companies-export.csv"; link.click(); URL.revokeObjectURL(url);
+    };
+    const saveCurrentView = () => {
+        const name = viewName.trim();
+        if (!name) return;
+        const query = searchParams.toString();
+        setSavedViews(current => [...current.filter(view => view.name !== name), { name, query }]);
+        setViewName("");
     };
 
     // ---------------------------------------------------------
@@ -135,6 +187,7 @@ export default function CompaniesExplorer({
         setDraftSize("");
         setDraftLegalForm("");
         setDraftNace("");
+        setDraftMunicipality("");
         setDraftTurnoverMin("");
         setDraftTurnoverMax("");
 
@@ -189,13 +242,16 @@ export default function CompaniesExplorer({
                 size={draftSize}
                 legalForm={draftLegalForm}
                 nace={draftNace}
+                municipality={draftMunicipality}
                 turnoverMin={draftTurnoverMin}
                 turnoverMax={draftTurnoverMax}
                 onSearchChange={setDraftSearch}
+                onSuggestionSelect={handleSuggestionSelect}
                 onSectorChange={setDraftSector}
                 onSizeChange={setDraftSize}
                 onLegalFormChange={setDraftLegalForm}
                 onNaceChange={setDraftNace}
+                onMunicipalityChange={setDraftMunicipality}
                 onTurnoverMinChange={setDraftTurnoverMin}
                 onTurnoverMaxChange={setDraftTurnoverMax}
                 onApply={handleApplyFilters}
@@ -216,6 +272,7 @@ export default function CompaniesExplorer({
                     </div>
 
                     <div className="company-sort-controls">
+                        <button type="button" className="sort-button" onClick={exportVisibleRows}>Export CSV</button>
                         <button
                             type="button"
                             className="sort-button"
@@ -244,6 +301,12 @@ export default function CompaniesExplorer({
                                     : "↓")}
                         </button>
                     </div>
+                </div>
+
+                <div className="company-views">
+                    <input value={viewName} onChange={event => setViewName(event.target.value)} onKeyDown={event => { if (event.key === "Enter") saveCurrentView(); }} placeholder="Save current filters as…" />
+                    <button type="button" onClick={saveCurrentView}>Save view</button>
+                    {savedViews.length > 0 && <select aria-label="Saved views" defaultValue="" onChange={event => { if (event.target.value) router.push(`${pathname}?${event.target.value}`); }}><option value="">Open saved view…</option>{savedViews.map(view => <option key={view.name} value={view.query}>{view.name}</option>)}</select>}
                 </div>
 
                 <CompaniesTable
