@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { CompaniesResponse } from "@/types/company";
@@ -45,6 +45,7 @@ export default function CompaniesExplorer({
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const [isPending, startTransition] = useTransition();
 
     // ---------------------------------------------------------
     // DRAFT FILTERS
@@ -122,11 +123,9 @@ export default function CompaniesExplorer({
 
         const queryString = params.toString();
 
-        router.push(
-            queryString
-                ? `${pathname}?${queryString}`
-                : pathname,
-        );
+        startTransition(() => {
+            router.push(queryString ? `${pathname}?${queryString}` : pathname);
+        });
     };
 
     // ---------------------------------------------------------
@@ -191,7 +190,7 @@ export default function CompaniesExplorer({
         setDraftTurnoverMin("");
         setDraftTurnoverMax("");
 
-        router.push(pathname);
+        startTransition(() => router.push(pathname));
     };
 
     // ---------------------------------------------------------
@@ -256,9 +255,10 @@ export default function CompaniesExplorer({
                 onTurnoverMaxChange={setDraftTurnoverMax}
                 onApply={handleApplyFilters}
                 onReset={handleReset}
+                isLoading={isPending}
             />
 
-            <section className="panel companies-panel">
+            <section className={`panel companies-panel ${isPending ? "is-loading" : ""}`} aria-busy={isPending}>
                 <div className="panel-header">
                     <div>
                         <div className="panel-eyebrow">
@@ -272,10 +272,11 @@ export default function CompaniesExplorer({
                     </div>
 
                     <div className="company-sort-controls">
-                        <button type="button" className="sort-button" onClick={exportVisibleRows}>Export CSV</button>
+                        <button type="button" className="sort-button" onClick={exportVisibleRows} disabled={isPending}>Export CSV</button>
                         <button
                             type="button"
                             className="sort-button"
+                            disabled={isPending}
                             onClick={() =>
                                 handleSort("name")
                             }
@@ -290,6 +291,7 @@ export default function CompaniesExplorer({
                         <button
                             type="button"
                             className="sort-button"
+                            disabled={isPending}
                             onClick={() =>
                                 handleSort("ico")
                             }
@@ -305,13 +307,13 @@ export default function CompaniesExplorer({
 
                 <div className="company-views">
                     <input value={viewName} onChange={event => setViewName(event.target.value)} onKeyDown={event => { if (event.key === "Enter") saveCurrentView(); }} placeholder="Save current filters as…" />
-                    <button type="button" onClick={saveCurrentView}>Save view</button>
-                    {savedViews.length > 0 && <select aria-label="Saved views" defaultValue="" onChange={event => { if (event.target.value) router.push(`${pathname}?${event.target.value}`); }}><option value="">Open saved view…</option>{savedViews.map(view => <option key={view.name} value={view.query}>{view.name}</option>)}</select>}
+                    <button type="button" onClick={saveCurrentView} disabled={isPending}>Save view</button>
+                    {savedViews.length > 0 && <select aria-label="Saved views" defaultValue="" disabled={isPending} onChange={event => { if (event.target.value) startTransition(() => router.push(`${pathname}?${event.target.value}`)); }}><option value="">Open saved view…</option>{savedViews.map(view => <option key={view.name} value={view.query}>{view.name}</option>)}</select>}
                 </div>
 
                 <CompaniesTable
                     companies={data.items}
-                    loading={false}
+                    loading={isPending}
                 />
 
                 <Pagination
@@ -319,6 +321,7 @@ export default function CompaniesExplorer({
                     limit={data.pagination.limit}
                     offset={data.pagination.offset}
                     onPageChange={handlePageChange}
+                    disabled={isPending}
                 />
             </section>
         </div>

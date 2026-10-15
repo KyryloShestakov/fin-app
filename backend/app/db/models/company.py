@@ -113,6 +113,11 @@ class CompanyAddress(Base):
             "idx_company_addresses_municipality",
             "municipality",
         ),
+        Index(
+            "idx_company_addresses_type_company",
+            "address_type",
+            "company_id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(

@@ -71,6 +71,11 @@ class FinancialStatement(Base):
             "idx_financial_statements_year",
             "fiscal_year",
         ),
+        Index(
+            "idx_financial_statements_year_company",
+            "fiscal_year",
+            "company_id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(
@@ -154,6 +159,11 @@ class FinancialValue(Base):
         Index(
             "idx_financial_values_metric",
             "metric_id",
+        ),
+        Index(
+            "idx_financial_values_metric_statement",
+            "metric_id",
+            "statement_id",
         ),
     )
 

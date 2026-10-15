@@ -3,7 +3,7 @@ const API_URL = process.env.API_URL;
 export async function GET() {
     if (!API_URL) return NextResponse.json({ error: 'API_URL missing' }, { status: 500 });
     try {
-        const r = await fetch(`${API_URL}/api/analytics/financial-table/metadata`, { cache: 'no-store' });
+        const r = await fetch(`${API_URL}/api/analytics/financial-table/metadata`, { next: { revalidate: 3600 } });
         return new NextResponse(await r.text(), { status: r.status, headers: { 'Content-Type': 'application/json' } });
     } catch { return NextResponse.json({ error: 'Backend unavailable' }, { status: 502 }); }
 }

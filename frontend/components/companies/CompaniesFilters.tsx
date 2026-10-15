@@ -24,6 +24,7 @@ type CompaniesFiltersProps = {
 
     onApply: () => void;
     onReset: () => void;
+    isLoading?: boolean;
 };
 
 export default function CompaniesFilters({
@@ -45,7 +46,8 @@ export default function CompaniesFilters({
                                              onTurnoverMinChange,
                                              onTurnoverMaxChange,
                                              onApply,
-                                             onReset,
+                                         onReset,
+                                         isLoading = false,
                                          }: CompaniesFiltersProps) {
     const [suggestions, setSuggestions] = useState<{ ico: string; name: string; municipality: string | null }[]>([]);
 
@@ -81,6 +83,7 @@ export default function CompaniesFilters({
                     onChange={(event) =>
                         onSearchChange(event.target.value)
                     }
+                    disabled={isLoading}
                 />
 
                 {suggestions.length > 0 && (
@@ -102,6 +105,7 @@ export default function CompaniesFilters({
                     onChange={(event) =>
                         onSectorChange(event.target.value)
                     }
+                    disabled={isLoading}
                 >
                     <option value="">All sectors</option>
                     <option value="A">Agriculture</option>
@@ -119,6 +123,7 @@ export default function CompaniesFilters({
                     onChange={(event) =>
                         onSizeChange(event.target.value)
                     }
+                    disabled={isLoading}
                 >
                     <option value="">All sizes</option>
                     <option value="MICRO">Micro</option>
@@ -133,6 +138,7 @@ export default function CompaniesFilters({
                     onChange={(event) =>
                         onNaceChange(event.target.value)
                     }
+                    disabled={isLoading}
                 />
 
                 <input
@@ -140,6 +146,7 @@ export default function CompaniesFilters({
                     placeholder="Registered city"
                     value={municipality}
                     onChange={(event) => onMunicipalityChange(event.target.value)}
+                    disabled={isLoading}
                 />
 
                 <input
@@ -149,6 +156,7 @@ export default function CompaniesFilters({
                     onChange={(event) =>
                         onLegalFormChange(event.target.value)
                     }
+                    disabled={isLoading}
                 />
 
                 <input
@@ -159,6 +167,7 @@ export default function CompaniesFilters({
                     onChange={(event) =>
                         onTurnoverMinChange(event.target.value)
                     }
+                    disabled={isLoading}
                 />
 
                 <input
@@ -169,6 +178,7 @@ export default function CompaniesFilters({
                     onChange={(event) =>
                         onTurnoverMaxChange(event.target.value)
                     }
+                    disabled={isLoading}
                 />
 
                 {hasFilters && (
@@ -177,6 +187,7 @@ export default function CompaniesFilters({
                             type="button"
                             className="filter-apply"
                             onClick={onApply}
+                            disabled={isLoading}
                         >
                             Apply filters
                         </button>
@@ -185,6 +196,7 @@ export default function CompaniesFilters({
                             type="button"
                             className="filter-reset"
                             onClick={onReset}
+                            disabled={isLoading}
                         >
                             Clear filters
                         </button>

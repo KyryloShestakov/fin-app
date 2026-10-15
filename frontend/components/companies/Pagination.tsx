@@ -3,13 +3,15 @@ type PaginationProps = {
     limit: number;
     offset: number;
     onPageChange: (page: number) => void;
+    disabled?: boolean;
 };
 
 export default function Pagination({
                                        total,
                                        limit,
                                        offset,
-                                       onPageChange,
+                                   onPageChange,
+                                       disabled = false,
                                    }: PaginationProps) {
     const currentPage = Math.floor(offset / limit) + 1;
     const totalPages = Math.max(1, Math.ceil(total / limit));
@@ -31,7 +33,7 @@ export default function Pagination({
             <div className="pagination-controls">
                 <button
                     className="pagination-button"
-                    disabled={currentPage === 1}
+                    disabled={disabled || currentPage === 1}
                     onClick={() => onPageChange(currentPage - 1)}
                 >
                     ←
@@ -43,7 +45,7 @@ export default function Pagination({
 
                 <button
                     className="pagination-button"
-                    disabled={currentPage === totalPages}
+                    disabled={disabled || currentPage === totalPages}
                     onClick={() => onPageChange(currentPage + 1)}
                 >
                     →

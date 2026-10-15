@@ -10,6 +10,7 @@
 .fe-filter{justify-content:flex-start;margin-bottom:12px}.fe-filter select:first-child{max-width:300px;flex:1}.fe-filter input{width:120px}
 .fe-chips{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.fe-chips button{background:#f0f4f8;border:1px solid #dbe2e9;border-radius:20px;padding:6px 10px;cursor:pointer;color:#354151;font-size:12px}
 .fe-scroll{height:520px;max-width:100%;overflow:auto;border:1px solid #e1e5eb;border-radius:8px;position:relative}
+.fe-scroll[aria-busy="true"]::after{content:"Loading financial data…";position:absolute;z-index:8;top:12px;right:12px;padding:7px 10px;border:1px solid #dbeafe;border-radius:999px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:600;box-shadow:0 2px 7px rgba(30,64,175,.08)}.fe-scroll[aria-busy="true"] table{opacity:.58;pointer-events:none}
 .fe-scroll table{border-collapse:separate;border-spacing:0;min-width:max-content;width:100%;font-size:12px}
 .fe-scroll th,.fe-scroll td{box-sizing:border-box;padding:11px 13px;border-bottom:1px solid #edf0f3;border-right:1px solid #edf0f3;white-space:nowrap;background:#fff}
 .fe-scroll th{position:sticky;top:0;z-index:3;background:#f5f7fa;text-align:left;font-weight:600}

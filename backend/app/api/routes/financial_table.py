@@ -22,6 +22,22 @@ from app.services.financial_analysis import (
 
 router = APIRouter(prefix='/api/analytics', tags=['Analytics'])
 
+# Metrics used by the health score and all values displayed in the insight panel.
+# Keeping the sector query to this set avoids loading unrelated rows for every
+# company in a selected sector.
+INSIGHT_METRIC_CODES = frozenset({
+    'assets',
+    'cash',
+    'current_assets',
+    'current_liabilities',
+    'liabilities',
+    'net_profit',
+    'net_turnover',
+    'receivables',
+    'revenue_goods',
+    'revenue_products_services',
+})
+
 
 class MetricFilter(BaseModel):
     code: str
@@ -148,13 +164,27 @@ def financial_table(request: TableRequest, db: Session = Depends(get_db)):
                                     'values': values_by_company[r.id]} for r in company_rows]}
 
 
-def _metric_rows(db: Session, year: int, company_ids: list[int]):
+def _metric_rows(
+    db: Session,
+    year: int,
+    company_ids: list[int],
+    metric_codes: frozenset[str] | None = None,
+):
     """Return one deterministic value per metric for each company."""
+    if not company_ids:
+        return {}
+
+    conditions = [
+        FinancialStatement.fiscal_year == year,
+        FinancialStatement.company_id.in_(company_ids),
+    ]
+    if metric_codes is not None:
+        conditions.append(FinancialMetric.code.in_(metric_codes))
     rows = db.execute(
         select(FinancialStatement.company_id, FinancialMetric.code, func.max(FinancialValue.value))
         .join(FinancialValue, FinancialValue.statement_id == FinancialStatement.id)
         .join(FinancialMetric, FinancialMetric.id == FinancialValue.metric_id)
-        .where(FinancialStatement.fiscal_year == year, FinancialStatement.company_id.in_(company_ids))
+        .where(*conditions)
         .group_by(FinancialStatement.company_id, FinancialMetric.code)
     ).all()
     result: dict[int, dict[str, float | None]] = defaultdict(dict)
@@ -195,8 +225,8 @@ def financial_table_insights(request: InsightRequest, db: Session = Depends(get_
         .where(Company.id.in_(request.company_ids))
     ).all()
     company_ids = [company.id for company in companies]
-    current = _metric_rows(db, year, company_ids)
-    previous = _metric_rows(db, year - 1, company_ids)
+    current = _metric_rows(db, year, company_ids, INSIGHT_METRIC_CODES)
+    previous = _metric_rows(db, year - 1, company_ids, INSIGHT_METRIC_CODES)
     sector_ids = [company.sector_id for company in companies if company.sector_id is not None]
     sector_company_ids = []
     company_sector_ids: dict[int, int | None] = {}
@@ -204,7 +234,7 @@ def financial_table_insights(request: InsightRequest, db: Session = Depends(get_
         sector_members = db.execute(select(Company.id, Company.sector_id).where(Company.sector_id.in_(sector_ids))).all()
         sector_company_ids = [company_id for company_id, _ in sector_members]
         company_sector_ids = {company_id: sector_id for company_id, sector_id in sector_members}
-    sector_current = _metric_rows(db, year, sector_company_ids)
+    sector_current = _metric_rows(db, year, sector_company_ids, INSIGHT_METRIC_CODES)
     benchmarks: dict[int, dict[str, float | None]] = {}
     for sector_id in set(sector_ids):
         sample = []
